@@ -1,8 +1,12 @@
 ﻿using ApiRest.Net5.Data;
 using ApiRest.Net5.Data.Dtos;
 using ApiRest.Net5.Models;
+using ApiRest.Net5.Services;
 using AutoMapper;
+using FluentResults;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ApiRest.Net5.Controllers
@@ -11,41 +15,38 @@ namespace ApiRest.Net5.Controllers
     [Route("[controller]")]
     public class FilmeController:ControllerBase
     {
-        private FilmeContext _context;
-        private IMapper _mapper;
+        private FilmeService _service;
 
-        public FilmeController(FilmeContext context, IMapper mapper)
+        public FilmeController(FilmeService service)
         {
-            _context = context;
-            _mapper = mapper;
+            _service = service;
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public IActionResult AdicionaFilme([FromBody] CreateFilmeDto filmeDto)
         {
-            Filme filme = _mapper.Map<Filme>(filmeDto);
-            _context.Filmes.Add(filme);
-            _context.SaveChanges();
-            return CreatedAtAction(nameof(RetornaFilmePorId), new { id = filme.Id }, filme);
+            ReadFilmeDto readDto =  _service.AdicionaFilme(filmeDto);
+
+            return CreatedAtAction(nameof(RetornaFilmePorId), new { id = readDto.Id }, readDto);
         }
 
         [HttpGet]
-        public IActionResult RecuperaFilmes()
+        public IActionResult RecuperaFilmes([FromQuery] int? classificacaoEtaria = null)
         {
-            return Ok(_context.Filmes);
+            List<ReadFilmeDto> readDto =  _service.RecuperaFilmes(classificacaoEtaria);
+            if (readDto != null)
+                return Ok(readDto);
+
+            return NotFound();
         }
 
         [HttpGet("{id}")]
         public IActionResult RetornaFilmePorId(int id)
         {
-            Filme filme = _context.Filmes.FirstOrDefault(Filme => Filme.Id == id);
-            if (filme != null)
-            {
-                ReadFilmeDto filmeDto = _mapper.Map<ReadFilmeDto>(filme);
-
-                return Ok(filmeDto);
-            }
-                
+            ReadFilmeDto readDto = _service.RetornaFilmePorId(id);
+            if (readDto != null)
+                return Ok(readDto);
 
             return NotFound();
         }
@@ -53,29 +54,22 @@ namespace ApiRest.Net5.Controllers
         [HttpPut("{id}")]
         public IActionResult AtualizaFilme(int id, [FromBody] UpdateFilmeDto filmeDto)
         {
-            Filme filme = _context.Filmes.FirstOrDefault(filme => filme.Id == id);
-            if (filme == null)
-            {
-                return NotFound();
-            }
+            Result result =  _service.AtualizaFilme(id, filmeDto);
+            
+            if (result.IsFailed) return NotFound();
 
-            _mapper.Map(filmeDto, filme);
-            _context.SaveChanges();
             return NoContent();
+
         }
 
         [HttpDelete("{id}")]
         public IActionResult DeletaFilme(int id)
         {
-            Filme filme = _context.Filmes.FirstOrDefault(filme => filme.Id == id);
-            if (filme == null)
-            {
-                return NotFound();
-            }
-            _context.Remove(filme);
-            _context.SaveChanges();
-            return NoContent();
+            Result result = _service.DeletaFilme(id);
 
+            if (result.IsFailed) return NotFound();
+
+            return NoContent();
         }
     }
 }

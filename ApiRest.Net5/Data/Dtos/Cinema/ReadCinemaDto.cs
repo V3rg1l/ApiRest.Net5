@@ -1,4 +1,5 @@
-﻿using ApiRest.Net5.Models;
+﻿
+using ApiRest.Net5.Models;
 using System.ComponentModel.DataAnnotations;
 
 namespace ApiRest.Net5.Data.Dtos
@@ -12,5 +13,7 @@ namespace ApiRest.Net5.Data.Dtos
         public string Nome { get; set; }
 
         public Endereco Endereco { get; set; }
+
+        public ApiRest.Net5.Models.Gerente Gerente { get; set; }
     }
 }
